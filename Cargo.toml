@@ -1,0 +1,19 @@
+[package]
+name = "font-loader"
+version = "0.1.0"
+edition = "2021"
+description = "A small Windows utility that temporarily loads dropped font files."
+
+[[bin]]
+name = "FontLoader"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61.3", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_Controls",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
