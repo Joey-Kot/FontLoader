@@ -1,4 +1,4 @@
-name: Build Windows
+name: Build Latest Release
 
 on:
   push:
@@ -11,12 +11,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-windows-${{ github.ref }}
+  group: latest-release
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Windows (${{ matrix.arch }})
+    name: Font Loader (windows-${{ matrix.arch }})
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +73,56 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: FontLoader-windows-${{ matrix.arch }}
+          name: release-font-loader-windows-${{ matrix.arch }}
           path: release-output/*
           if-no-files-found: error
           retention-days: 1
+
+  publish:
+    name: Replace Latest release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository and tags
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Verify checksums and create aggregate checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum --check ./*.sha256
+          sha256sum ./*.zip | sed 's#  \./#  #' > SHA256SUMS
+
+      - name: Replace Latest tag and release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view Latest; then
+            gh release delete Latest --cleanup-tag --yes
+          fi
+
+          git tag --force Latest "${GITHUB_SHA}"
+          git push origin refs/tags/Latest --force
+
+          gh release create Latest release-assets/* \
+            --verify-tag \
+            --title "Latest" \
+            --notes "Automated rolling build from commit ${GITHUB_SHA}. Includes Windows x86_64 and ARM64 Font Loader packages. Every archive has a matching SHA-256 sidecar; SHA256SUMS contains the aggregate checksums." \
+            --latest
