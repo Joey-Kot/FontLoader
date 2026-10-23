@@ -134,7 +134,7 @@ mod windows_app {
                 dwICC: ICC_LISTVIEW_CLASSES,
             };
             if !InitCommonControlsEx(&common_controls).as_bool() {
-                return Err(Error::from_win32());
+                return Err(Error::from_thread());
             }
 
             let module = GetModuleHandleW(None)?;
@@ -148,7 +148,7 @@ mod windows_app {
             };
 
             if RegisterClassW(&window_class) == 0 {
-                return Err(Error::from_win32());
+                return Err(Error::from_thread());
             }
 
             let window = CreateWindowExW(
@@ -243,7 +243,7 @@ mod windows_app {
         };
 
         let Some(state) = (unsafe { state_from_window(window) }) else {
-            return Err(Error::from_win32());
+            return Err(Error::from_thread());
         };
         state.list = list;
 
